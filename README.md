@@ -42,9 +42,13 @@ flowchart TB
     CH[(ClickHouse\nanalytics)]
   end
 
+  subgraph cacheLayer [Cache]
+    Redis[(Redis\ncache and streams)]
+  end
+
   subgraph deliveryLayer [Delivery]
     GoAPI[Go_Fiber_REST_API]
-    FlaskAPI[Python_Flask_API]
+    FlaskAPI[Python_Flask_API incl Open API]
     GoWS[Go_WebSocket]
   end
 
@@ -62,6 +66,8 @@ flowchart TB
   MySQL --> GoWS
   CH --> GoAPI
   CH --> GoWS
+  Redis --> GoAPI
+  Redis --> GoWS
   TF -.-> deliveryLayer
   Auth -.-> GoAPI
 ```
@@ -76,7 +82,7 @@ flowchart TB
 
 ## What I built and owned
 
-- **Data platform** — cardano-db-sync (PostgreSQL) → Python feeds (DEX, NFT, staking, synthetics, OHLC) → MySQL index DB + ClickHouse analytics; millions of onchain records processed daily.
+- **Data platform** — cardano-db-sync (PostgreSQL) → Python feeds (DEX, NFT, staking, synthetics, OHLC) → MySQL index DB + ClickHouse analytics; millions of onchain records processed.
 - **Go API & WebSocket** — High-performance Fiber REST API and real-time `go-ws` service for live trades, OHLC, and token statistics.
 - **Data products** — OHLC builder, portfolio/taxation engines, commercial Open API, partner integrations with 15+ protocol teams.
 - **Platform engineering** — Terraform modules/stacks, auth microservice (JWT, DPoP, Apple App Attest), multi-env AWS platform.
@@ -91,13 +97,15 @@ flowchart TB
 | Languages | Go, Python, JavaScript |
 | Backend | Go Fiber, Flask, REST, WebSocket, Celery, Asynq |
 | Data | ClickHouse, MySQL, PostgreSQL, Redis |
-| Chain | Cardano ChainSync, cardano-db-sync, Blockfrost |
-| Cloud | AWS (ECS, Lambda, Kinesis, RDS, S3, CloudFront, WAF), Terraform, GitHub Actions |
+| Chain | cardano-db-sync, Blockfrost *(ChainSync/Kinesis in development)* |
+| Cloud | AWS (ECS, Lambda, RDS, S3, CloudFront, WAF), Terraform, GitHub Actions *(Kinesis in development)* |
 | Observability | CloudWatch, Sentry, structured logging, Swagger |
 
 ---
 
 ## Platform tour
+
+[![TapTools platform tour on YouTube](https://img.youtube.com/vi/jJPz-M-CfgU/hqdefault.jpg)](https://www.youtube.com/watch?v=jJPz-M-CfgU)
 
 **[Watch the platform tour on YouTube](https://www.youtube.com/watch?v=jJPz-M-CfgU)**
 
@@ -123,7 +131,14 @@ Screenshots from when the platform was live:
 ![Open API](./design/open-api.png)
 
 ### API documentation (Swagger)
-![Swagger](./design/Protoqit-CRM-Swagger.png)
+![Swagger](./design/taptools-swagger.png)
+
+### CBDAO KPI Dashboard (Cardano Builder DAO, Mar 2026)
+Funded deliverable — member KPI tracking for Cardano Builder DAO, powered by TapTools.
+
+![CBDAO KPI Dashboard](./design/cbdao-kpi-dashboard.png)
+
+Live: [cbdao.taptools.io](https://cbdao.taptools.io/)
 
 ---
 
@@ -148,4 +163,5 @@ For technical inquiries, reach out via [LinkedIn](https://www.linkedin.com/in/ya
 
 - [LinkedIn](https://www.linkedin.com/in/yahiaabdelati/)
 - [GitHub](https://github.com/yahiaelpronc)
-- [CV / portfolio repo](https://github.com/yahiaelpronc/Taptools-Showcase)
+- [TapTools showcase](https://github.com/yahiaelpronc/Taptools-Showcase) (this repo)
+- [CV (LaTeX)](https://github.com/yahiaelpronc/cv)
