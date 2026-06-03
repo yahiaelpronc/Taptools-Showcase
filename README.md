@@ -21,49 +21,62 @@ TapTools indexes onchain market data for Cardano tokens and NFTs and powers port
 
 ---
 
-## Architecture (high level)
+## Architecture (production)
 
 ```mermaid
-flowchart LR
-  subgraph ingestion [Ingestion]
-    Node[CardanoNode]
-    CS[Go_ChainSync]
-    Kinesis[AWS_Kinesis]
+flowchart TB
+  subgraph chainLayer [Chain]
+    Node[Cardano_Node]
   end
-  subgraph storage [Storage]
-    CH[ClickHouse]
-    MySQL[MySQL]
-    PG[PostgreSQL]
+
+  subgraph syncLayer [Db Sync]
+    PG[(PostgreSQL\ncardano-db-sync)]
   end
-  subgraph delivery [Delivery]
+
+  subgraph feedLayer [Python_Data_Feeds]
+    Feeds[DEX · NFT · Staking · Synthetics · OHLC]
+  end
+
+  subgraph storeLayer [Storage]
+    MySQL[(MySQL\nindex DB)]
+    CH[(ClickHouse\nanalytics)]
+  end
+
+  subgraph deliveryLayer [Delivery]
     GoAPI[Go_Fiber_REST_API]
-    GoWS[Go_WebSocket]
     FlaskAPI[Python_Flask_API]
+    GoWS[Go_WebSocket]
   end
-  subgraph platform [Platform]
+
+  subgraph platformLayer [Platform]
     TF[Terraform_AWS]
     Auth[Auth_Lambda]
   end
-  Node --> CS --> Kinesis --> CH
-  PG --> storage
-  storage --> GoAPI
-  storage --> GoWS
-  storage --> FlaskAPI
-  TF --> delivery
-  Auth --> GoAPI
+
+  Node --> PG
+  PG --> Feeds
+  Feeds --> MySQL
+  Feeds --> CH
+  MySQL --> GoAPI
+  MySQL --> FlaskAPI
+  MySQL --> GoWS
+  CH --> GoAPI
+  CH --> GoWS
+  TF -.-> deliveryLayer
+  Auth -.-> GoAPI
 ```
 
-**Event-driven chain pipeline:** Cardano node → Go ChainSync ingestion → AWS Kinesis → ClickHouse consumer, replacing Postgres db-sync for ledger-scale analytics.
+**Production data path:** Cardano node syncs to **PostgreSQL** (cardano-db-sync). **Python data feeds** read chain state from Postgres, process millions of onchain records, and index into **MySQL** (application/index data) and **ClickHouse** (analytics). **Go Fiber REST API**, **Python Flask API**, and **Go WebSocket** serve web, mobile, and Open API clients from MySQL and ClickHouse, with Redis for caching and live streams.
 
-**Polyglot services:** Python data feeds (DEX, NFT, staking, synthetics) + Go Fiber REST API and WebSocket layer + legacy Flask API, backed by MySQL, PostgreSQL, Redis, and ClickHouse Cloud.
+**Platform layer:** Terraform-managed AWS (ECS Fargate, Lambda@Edge, RDS, ElastiCache, CloudFront/WAF, GitHub Actions OIDC). Auth microservice on Lambda@Edge (JWT, DPoP, Apple App Attest).
 
-**Infrastructure:** Terraform-managed AWS — ECS Fargate, Lambda@Edge, Kinesis, RDS, ElastiCache, CloudFront/WAF, GitHub Actions OIDC deploys.
+*Note: a Go ChainSync → Kinesis → ClickHouse pipeline was in development to eventually reduce db-sync dependency; production ran on the Postgres → feeds → MySQL/ClickHouse path above.*
 
 ---
 
 ## What I built and owned
 
-- **Chain data platform** — ChainSync ingestion, Kinesis streaming, ClickHouse ETL, millions of onchain records processed daily across DEX/NFT/staking feeds.
+- **Data platform** — cardano-db-sync (PostgreSQL) → Python feeds (DEX, NFT, staking, synthetics, OHLC) → MySQL index DB + ClickHouse analytics; millions of onchain records processed daily.
 - **Go API & WebSocket** — High-performance Fiber REST API and real-time `go-ws` service for live trades, OHLC, and token statistics.
 - **Data products** — OHLC builder, portfolio/taxation engines, commercial Open API, partner integrations with 15+ protocol teams.
 - **Platform engineering** — Terraform modules/stacks, auth microservice (JWT, DPoP, Apple App Attest), multi-env AWS platform.
